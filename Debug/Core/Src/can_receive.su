@@ -1,0 +1,6 @@
+../Core/Src/can_receive.c:31:6:HAL_CAN_RxFifo0MsgPendingCallback	16	static
+../Core/Src/can_receive.c:39:6:CAN_ReceiveAndPrint	144	static
+../Core/Src/can_receive.c:83:6:send_velocity_rpdo	40	static
+../Core/Src/can_receive.c:118:9:read_actual_velocity	88	static
+../Core/Src/can_receive.c:148:6:send_sdo_write_u32	24	static
+../Core/Src/can_receive.c:168:6:print_velocity_both_nodes	384	static

@@ -1,0 +1,4 @@
+../Core/Src/can_tranceive.c:37:6:CAN_Loopback_Test	144	static
+../Core/Src/can_tranceive.c:61:19:CAN_SendString	96	static
+../Core/Src/can_tranceive.c:87:19:CAN_SendTopicData	24	static
+../Core/Src/can_tranceive.c:121:6:Send_All_SensorData_CAN	8	static
