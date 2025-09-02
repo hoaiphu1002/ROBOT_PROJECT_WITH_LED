@@ -1,3 +1,4 @@
+"./Core/Src/BN055_IT.o"
 "./Core/Src/BNO055.o"
 "./Core/Src/Debug.o"
 "./Core/Src/MQ135.o"

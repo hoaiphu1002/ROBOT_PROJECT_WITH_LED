@@ -14,6 +14,7 @@
 #include "rfid.h"
 #include "can_topic.h"
 #include "ultrasonic_sensor.h"
+#include "BN055_IT.h"
 
 extern volatile uint8_t timer10ms_flag ;
 
