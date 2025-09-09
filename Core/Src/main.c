@@ -141,6 +141,10 @@ uint32_t ADC_SAMPLES[1000];
 uint32_t NUM_SAMPLES = 0;
 volatile uint8_t mq135_done = 0;
 
+volatile uint32_t can1_tx_success = 0;   // số gói gửi thành công
+volatile uint32_t can1_rx_success = 0;   // số gói nhận thành công
+
+
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
@@ -160,6 +164,49 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
         idx = 0;
     }
 }
+
+void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan) {
+    if (hcan->Instance == CAN1) {
+        can1_tx_success++;
+    }
+}
+void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan) {
+    if (hcan->Instance == CAN1) {
+        can1_tx_success++;
+    }
+}
+void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan) {
+    if (hcan->Instance == CAN1) {
+        can1_tx_success++;
+    }
+}
+
+void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan) {
+    if (hcan->ErrorCode & HAL_CAN_ERROR_BOF) {
+        HAL_CAN_Stop(hcan);
+        HAL_CAN_DeInit(hcan);
+        HAL_CAN_Init(hcan);
+        HAL_CAN_Start(hcan);
+
+        // Cấu hình lại filter
+        HAL_CAN_ConfigFilter(hcan, &canfilterconfig);
+
+        // Bật lại interrupt
+        HAL_CAN_ActivateNotification(hcan,
+            CAN_IT_RX_FIFO0_MSG_PENDING |
+            CAN_IT_ERROR_WARNING |
+            CAN_IT_ERROR_PASSIVE |
+            CAN_IT_BUSOFF |
+            CAN_IT_LAST_ERROR_CODE |
+            CAN_IT_ERROR);
+
+        char msg[] = "⚡ CAN bus-off recovered\r\n";
+        HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+    }
+}
+
+
+
 
 /* USER CODE END 0 */
 
@@ -228,22 +275,29 @@ int main(void)
   HD44780_Backlight();   // Bật đèn nền
   MQ135_Config(&mq135, &hadc1);
   HAL_CAN_Start(&hcan1);
-  HAL_CAN_Start(&hcan2);
+//  HAL_CAN_Start(&hcan2);
   CAN_DebugStatus();
   HAL_CAN_ConfigFilter(&hcan1, &canfilterconfig);
-  HAL_CAN_ConfigFilter(&hcan2, &canfilterconfig);
+//  HAL_CAN_ConfigFilter(&hcan2, &canfilterconfig);
 	    // Cấu hình và hiệu chuẩn MQ135
 	    MQ135_Config(&mq135, &hadc1);
 	    MQ135_CalibrateRo(&mq135, 25.0f, 50.0f);  // không khí sạch giả lập
 // // Activate the notification
-  HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+//  HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+	    HAL_CAN_ActivateNotification(&hcan1,
+	        CAN_IT_RX_FIFO0_MSG_PENDING |
+	        CAN_IT_ERROR_WARNING |
+	        CAN_IT_ERROR_PASSIVE |
+	        CAN_IT_BUSOFF |
+	        CAN_IT_LAST_ERROR_CODE |
+	        CAN_IT_ERROR);
 //  DisplayTopicMenuUART();
-  BNO055_SendEulerCAN();
-//  checkRFIDAndControlRelay();
+//  Send_All_SensorData_CAN();//  checkRFIDAndControlRelay();
   HAL_TIM_Base_Start_IT(&htim7);
          HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET); // PA2 = 0 → Relay đỏ kích → NC ngắt → Đèn đỏ tắt
          HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);   // PA3 = 1 → Relay xanh không kích → Đèn xanh sáng
-		  Send_All_SensorData_CAN();
+ 	  	Send_All_SensorData_CAN();
+
 
   /* USER CODE END 2 */
 
@@ -251,9 +305,16 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1){
 //	  HandleUARTChoice();
+	  	Send_All_SensorData_CAN();
 	    Process_Ultrasonic_And_Control_Relay();
-		  Send_All_SensorData_CAN();
 //
+//		static uint32_t last_us_trigger_time=0 ;
+//	    if (timer10ms_flag) {
+//	        timer10ms_flag = 0;
+//	        BNO055_SendEulerCAN();
+//	    }
+//        BNO055_SendEulerCAN();
+
 
 //
 //	  if (can_rx_flag) {
@@ -299,6 +360,42 @@ int main(void)
 	           can_rx_count = 0;
 	           last_tick_can_stat = HAL_GetTick();
 	       }
+
+	    // --- CAN watchdog ---
+	    static uint32_t last_can_watchdog = 0;
+	    static uint8_t can_fail_count = 0;
+
+	    if (HAL_GetTick() - last_can_watchdog >= 1000) { // Mỗi 1 giây
+	        last_can_watchdog = HAL_GetTick();
+
+	        if (can1_tx_success == 0) {
+	            can_fail_count++;
+	        } else {
+	            can_fail_count = 0; // reset nếu có gói gửi thành công
+	        }
+
+	        char msg[64];
+	        snprintf(msg, sizeof(msg), "\r\nCAN1 TX/s: %lu | RX/s: %lu\r\n",
+	                 can1_tx_success, can1_rx_success);
+	        HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+
+	        // Reset thống kê mỗi giây
+	        can1_tx_success = 0;
+	        can1_rx_success = 0;
+
+	        if (can_fail_count >= 3) {  // Sau 3 giây không gửi được gói nào
+	            char msg[] = "⚠️ CAN1 timeout, restarting...\r\n";
+	            HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+
+//	            HAL_CAN_Stop(&hcan1);
+	            HAL_CAN_DeInit(&hcan1);
+	            MX_CAN1_Init();
+	            HAL_CAN_Start(&hcan1);
+//	            HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+
+	            can_fail_count = 0;
+	        }
+	    }
 
 
     /* USER CODE END WHILE */
@@ -428,8 +525,8 @@ static void MX_CAN1_Init(void)
   hcan1.Init.TimeSeg1 = CAN_BS1_12TQ;
   hcan1.Init.TimeSeg2 = CAN_BS2_1TQ;
   hcan1.Init.TimeTriggeredMode = DISABLE;
-  hcan1.Init.AutoBusOff = DISABLE;
-  hcan1.Init.AutoWakeUp = DISABLE;
+  hcan1.Init.AutoBusOff = ENABLE;
+  hcan1.Init.AutoWakeUp = ENABLE;
   hcan1.Init.AutoRetransmission = ENABLE;
   hcan1.Init.ReceiveFifoLocked = DISABLE;
   hcan1.Init.TransmitFifoPriority = DISABLE;
@@ -469,17 +566,17 @@ static void MX_CAN2_Init(void)
 
   /* USER CODE END CAN2_Init 1 */
   hcan2.Instance = CAN2;
-  hcan2.Init.Prescaler = 16;
+  hcan2.Init.Prescaler = 3;
   hcan2.Init.Mode = CAN_MODE_NORMAL;
   hcan2.Init.SyncJumpWidth = CAN_SJW_1TQ;
-  hcan2.Init.TimeSeg1 = CAN_BS1_1TQ;
+  hcan2.Init.TimeSeg1 = CAN_BS1_12TQ;
   hcan2.Init.TimeSeg2 = CAN_BS2_1TQ;
-  hcan2.Init.TimeTriggeredMode = DISABLE;
-  hcan2.Init.AutoBusOff = DISABLE;
-  hcan2.Init.AutoWakeUp = DISABLE;
+  hcan2.Init.TimeTriggeredMode = ENABLE;
+  hcan2.Init.AutoBusOff = ENABLE;
+  hcan2.Init.AutoWakeUp = ENABLE;
   hcan2.Init.AutoRetransmission = ENABLE;
   hcan2.Init.ReceiveFifoLocked = DISABLE;
-  hcan2.Init.TransmitFifoPriority = DISABLE;
+  hcan2.Init.TransmitFifoPriority = ENABLE;
   if (HAL_CAN_Init(&hcan2) != HAL_OK)
   {
     Error_Handler();
@@ -532,7 +629,7 @@ static void MX_I2C3_Init(void)
 
   /* USER CODE END I2C3_Init 1 */
   hi2c3.Instance = I2C3;
-  hi2c3.Init.ClockSpeed = 100;
+  hi2c3.Init.ClockSpeed = 200;
   hi2c3.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c3.Init.OwnAddress1 = 0;
   hi2c3.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -1067,7 +1164,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11|GPIO_PIN_15, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7|GPIO_PIN_10|GPIO_PIN_11, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PA1 */
   GPIO_InitStruct.Pin = GPIO_PIN_1;
@@ -1110,8 +1207,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PC7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7;
+  /*Configure GPIO pins : PC7 PC10 PC11 */
+  GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_10|GPIO_PIN_11;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

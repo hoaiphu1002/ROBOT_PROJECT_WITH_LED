@@ -15,11 +15,12 @@
 {
     HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 
-    HAL_NVIC_SetPriority(CAN1_RX0_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn);
 
-    HAL_NVIC_SetPriority(CAN1_TX_IRQn, 1, 0);   // Gửi dữ liệu nhanh khi có sẵn
+    HAL_NVIC_SetPriority(CAN1_TX_IRQn, 0, 0);   // Gửi dữ liệu nhanh khi có sẵn
     HAL_NVIC_EnableIRQ(CAN1_TX_IRQn);
+
+    HAL_NVIC_SetPriority(CAN1_RX0_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn);
 
     HAL_NVIC_SetPriority(TIM1_CC_IRQn, 2, 0);
     HAL_NVIC_EnableIRQ(TIM1_CC_IRQn);

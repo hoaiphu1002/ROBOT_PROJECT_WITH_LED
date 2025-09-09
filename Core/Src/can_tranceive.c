@@ -83,10 +83,12 @@ HAL_StatusTypeDef CAN_SendString(uint16_t stdId, const char *str)
 
     return status;
 }
-
 HAL_StatusTypeDef CAN_SendTopicData(uint16_t topic_id, uint8_t *data, uint8_t len)
 {
     uint32_t TxMailbox;
+    HAL_StatusTypeDef status;
+    uint32_t start = HAL_GetTick();
+    const uint32_t timeout_ms = 5;   // thời gian retry tối đa (5ms)
 
     if (len > 8) len = 8;
 
@@ -107,9 +109,21 @@ HAL_StatusTypeDef CAN_SendTopicData(uint16_t topic_id, uint8_t *data, uint8_t le
 #endif
 
     can_tx_count++;
-    return HAL_CAN_AddTxMessage(&hcan1, &TxHeader, data, &TxMailbox);
-}
 
+    // --- Retry loop ---
+    do {
+        if (HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) > 0) {
+            status = HAL_CAN_AddTxMessage(&hcan1, &TxHeader, data, &TxMailbox);
+            if (status == HAL_OK) {
+                return HAL_OK;  // gửi thành công
+            }
+        }
+        // Nếu mailbox vẫn bận, chờ 1 tick rồi thử lại
+    } while ((HAL_GetTick() - start) < timeout_ms);
+
+    // Nếu hết thời gian vẫn không gửi được
+    return HAL_TIMEOUT;
+}
 
 extern MQ135_HandleTypeDef mq135;
 extern uint8_t currentUID[UID_LEN];  // từ rfid.c
@@ -126,12 +140,12 @@ void Send_All_SensorData_CAN(void)
         BNO055_SendEulerCAN();
     }
 
-    if (HAL_GetTick() - debug_timer >= 10) {
+    if (HAL_GetTick() - debug_timer >= 20) {
         BNO055_PrintEulerDebug();
         debug_timer = HAL_GetTick();
     }
 
-    if (HAL_GetTick() - last_us_trigger_time >= 200) {
+    if (HAL_GetTick() - last_us_trigger_time >= 300) {
             US01_TriggerAll_Sequential();      // Blocking đo 4 cảm biến
             PrintAllDistances();               // UART in khoảng cách
             US01_SendAllDistances_CAN();       // Gửi qua CAN

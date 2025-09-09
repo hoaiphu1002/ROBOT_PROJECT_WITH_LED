@@ -12,5 +12,6 @@ typedef enum {
 //    TOPIC_ID_vel2  	   = 0x018,
     TOPIC_ID_SEND_ALL  = 0x023,
 	TOPIC_ID_SENSOR    = 0X024,
+
 } CAN_TopicID;
 #endif // __CAN_TOPIC_H

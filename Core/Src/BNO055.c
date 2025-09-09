@@ -15,6 +15,8 @@
 extern HAL_StatusTypeDef BNO055_IT_Read (uint8_t devAddr, uint8_t regAddr, uint8_t *pData, uint16_t len);
 extern HAL_StatusTypeDef BNO055_IT_Write(uint8_t devAddr, uint8_t regAddr, uint8_t *pData, uint16_t len);
 
+
+
 //CÁC BƯỚC:
 //
 //1. Khởi tạo cảm biến(Init – BNO055_Init)
@@ -752,3 +754,5 @@ void BNO055_PrintEulerDebug(void)
     sprintf(msg, "DEBUG: Roll=%.2f°, Pitch=%.2f°, Yaw=%.2f°\r\n", roll, pitch, yaw);
     HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
 }
+
+
