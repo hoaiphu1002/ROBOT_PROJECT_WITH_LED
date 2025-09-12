@@ -124,6 +124,9 @@
 #include "can_tranceive.h"
 #include "can_topic.h"
 #include "led_control.h"
+
+extern CAN_HandleTypeDef hcan1;
+
 void Process_Ultrasonic_And_Control_Relay(void)
 {
     static uint8_t initialized = 0;
@@ -171,10 +174,17 @@ void Process_Ultrasonic_And_Control_Relay(void)
         HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET); // Xanh ON
     }
 
-    // Luôn gửi giá trị hiện tại
+    // Luôn gửi giá trị hiện tại nhưng không để LED bị treo nếu CAN lỗi
     uint8_t data[8] = {0};
     data[0] = signal;
-    CAN_SendTopicData(TOPIC_ID_SENSOR, data, 8);
+    if (HAL_CAN_GetState(&hcan1) == HAL_CAN_STATE_READY ||
+        HAL_CAN_GetState(&hcan1) == HAL_CAN_STATE_LISTENING)
+    {
+        if (CAN_SendTopicData(TOPIC_ID_SENSOR, data, 8) != HAL_OK) {
+            // Bỏ qua lỗi CAN, LED vẫn hoạt động
+        }
+    }
+
 }
 
 

@@ -60,8 +60,8 @@ all: main-build
 main-build: IVS_PROJECT_WITH_LED.elf secondary-outputs
 
 # Tool invocations
-IVS_PROJECT_WITH_LED.elf IVS_PROJECT_WITH_LED.map: $(OBJS) $(USER_OBJS) D:\MICROCONTROLLER\STM32\ CODE\IVS_PROJECT_WITH_LED\STM32F407VGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "IVS_PROJECT_WITH_LED.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\MICROCONTROLLER\STM32 CODE\IVS_PROJECT_WITH_LED\STM32F407VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="IVS_PROJECT_WITH_LED.map" -Wl,--gc-sections -static -u _printf_float --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+IVS_PROJECT_WITH_LED.elf IVS_PROJECT_WITH_LED.map: $(OBJS) $(USER_OBJS) D:\MICROCONTROLLER\STM32\ CODE\ROBOT_PROJECT_WITH_LED\STM32F407VGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "IVS_PROJECT_WITH_LED.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\MICROCONTROLLER\STM32 CODE\ROBOT_PROJECT_WITH_LED\STM32F407VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="IVS_PROJECT_WITH_LED.map" -Wl,--gc-sections -static -u _printf_float --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

@@ -31,8 +31,37 @@ extern uint8_t rxData[8];
 extern MQ135_HandleTypeDef mq135;
 
 extern volatile uint32_t can_tx_count ;
+extern volatile uint32_t can_rx_count ;
+
+
+
 
 #define ENABLE_DEBUG_CAN 0  // bật = 1 nếu muốn in gói CAN qua UART
+
+static uint32_t imu_reset_time = 0;
+extern volatile uint8_t bno055_need_reset;
+
+void BNO055_CheckAndRecover(void)
+{
+    if (bno055_need_reset) {
+        bno055_need_reset = 0;
+
+        HAL_I2C_DeInit(&bno_i2c);
+        HAL_Delay(5);
+        HAL_I2C_Init(&bno_i2c);
+
+        BNO055_Init();  // bắt buộc init lại mode
+
+        imu_reset_time = HAL_GetTick();  // đánh dấu thời điểm reset
+        printf("✅ BNO055 reset, đợi ổn định...\r\n");
+    }
+}
+
+bool BNO055_IsStable(void)
+{
+    return (HAL_GetTick() - imu_reset_time > 500);  // chờ 1 giây
+}
+
 
 void CAN_Loopback_Test(void)
 {
@@ -88,7 +117,7 @@ HAL_StatusTypeDef CAN_SendTopicData(uint16_t topic_id, uint8_t *data, uint8_t le
     uint32_t TxMailbox;
     HAL_StatusTypeDef status;
     uint32_t start = HAL_GetTick();
-    const uint32_t timeout_ms = 5;   // thời gian retry tối đa (5ms)
+    const uint32_t timeout_ms = 3;   // thời gian retry tối đa (5ms)
 
     if (len > 8) len = 8;
 
@@ -123,6 +152,21 @@ HAL_StatusTypeDef CAN_SendTopicData(uint16_t topic_id, uint8_t *data, uint8_t le
 
     // Nếu hết thời gian vẫn không gửi được
     return HAL_TIMEOUT;
+    if (status==HAL_TIMEOUT){
+    	 // Reset CAN
+
+//        HAL_CAN_Stop(&hcan1);
+//        HAL_CAN_DeInit(&hcan1);
+//        HAL_CAN_Start(&hcan1);
+//        HAL_CAN_ActivateNotification(&hcan1,
+//            CAN_IT_ERROR_WARNING |
+//            CAN_IT_ERROR_PASSIVE |
+//            CAN_IT_BUSOFF |
+//            CAN_IT_LAST_ERROR_CODE |
+//            CAN_IT_ERROR);
+        NVIC_SystemReset();
+
+    }
 }
 
 extern MQ135_HandleTypeDef mq135;
@@ -134,10 +178,16 @@ extern volatile uint8_t timer10ms_flag ;
 
 void Send_All_SensorData_CAN(void)
 {
-	static uint32_t last_us_trigger_time=0 ;
+	static uint32_t last_us_trigger_time ;
+
     if (timer10ms_flag) {
         timer10ms_flag = 0;
-        BNO055_SendEulerCAN();
+//        BNO055_SendEulerCAN();
+        if (BNO055_IsStable()) {
+              BNO055_SendEulerCAN();
+          } else {
+              // bỏ qua dữ liệu trong lúc IMU đang ổn định lại
+          }
     }
 
     if (HAL_GetTick() - debug_timer >= 20) {
@@ -145,7 +195,7 @@ void Send_All_SensorData_CAN(void)
         debug_timer = HAL_GetTick();
     }
 
-    if (HAL_GetTick() - last_us_trigger_time >= 300) {
+    if (HAL_GetTick() - last_us_trigger_time >= 400) {
             US01_TriggerAll_Sequential();      // Blocking đo 4 cảm biến
             PrintAllDistances();               // UART in khoảng cách
             US01_SendAllDistances_CAN();       // Gửi qua CAN
@@ -160,4 +210,42 @@ void Send_All_SensorData_CAN(void)
         last_mq135_time = HAL_GetTick();
     }
     checkRFIDAndControlRelay();
+    static uint32_t last_can_tx = 0;
+    static uint8_t can_fail_count = 0;
+
+    if (HAL_GetTick() - last_can_tx >= 300) { // kiểm tra mỗi giây
+        if (can_tx_count == 0 && can_rx_count == 0) {
+            can_fail_count++;
+        } else {
+            can_fail_count = 0;
+        }
+
+        if (can_fail_count >= 3) { // 3 giây không có hoạt động
+            char msg[] = "⚠️ CAN watchdog triggered, reinit...\r\n";
+            HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+
+            // Reset lại CAN1 hoàn chỉnh
+            HAL_CAN_Stop(&hcan1);
+            HAL_CAN_DeInit(&hcan1);
+            HAL_CAN_Init(&hcan1);
+            HAL_CAN_Start(&hcan1);
+
+
+            // Bật lại interrupt
+            HAL_CAN_ActivateNotification(&hcan1,
+                CAN_IT_ERROR_WARNING |
+                CAN_IT_ERROR_PASSIVE |
+                CAN_IT_BUSOFF |
+                CAN_IT_LAST_ERROR_CODE |
+                CAN_IT_ERROR);
+
+
+            can_fail_count = 0;
+        }
+
+        can_tx_count = 0;
+        can_rx_count = 0;
+        last_can_tx = HAL_GetTick();
+    }
+
 }

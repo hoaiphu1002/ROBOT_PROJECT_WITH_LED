@@ -181,27 +181,44 @@ void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan) {
     }
 }
 
+static uint8_t can_recover_attempts = 0;
+
 void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan) {
-    if (hcan->ErrorCode & HAL_CAN_ERROR_BOF) {
+    uint32_t err = hcan->ErrorCode;
+
+    // Chỉ xử lý các lỗi nghiêm trọng dễ gây nghẽn
+    if (err & (HAL_CAN_ERROR_BOF |
+               HAL_CAN_ERROR_ACK |
+               HAL_CAN_ERROR_TX_TERR0 | HAL_CAN_ERROR_TX_TERR1 | HAL_CAN_ERROR_TX_TERR2 |
+               HAL_CAN_ERROR_RX_FOV0 | HAL_CAN_ERROR_RX_FOV1))
+    {
+        can_recover_attempts++;
+
+        // Thử phục hồi CAN
         HAL_CAN_Stop(hcan);
         HAL_CAN_DeInit(hcan);
         HAL_CAN_Init(hcan);
         HAL_CAN_Start(hcan);
 
-        // Cấu hình lại filter
         HAL_CAN_ConfigFilter(hcan, &canfilterconfig);
 
-        // Bật lại interrupt
         HAL_CAN_ActivateNotification(hcan,
-            CAN_IT_RX_FIFO0_MSG_PENDING |
             CAN_IT_ERROR_WARNING |
             CAN_IT_ERROR_PASSIVE |
             CAN_IT_BUSOFF |
             CAN_IT_LAST_ERROR_CODE |
             CAN_IT_ERROR);
 
-        char msg[] = "⚡ CAN bus-off recovered\r\n";
+        char msg[128];
+        sprintf(msg, "⚡ CAN error (0x%08lX) recovered, attempt %d\r\n", err, can_recover_attempts);
         HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+
+        // Nếu thử nhiều lần mà vẫn dính lỗi → reset MCU
+        if (can_recover_attempts >= 3) {
+            char resetmsg[] = "❌ CAN stuck, resetting MCU...\r\n";
+            HAL_UART_Transmit(&huart1, (uint8_t*)resetmsg, strlen(resetmsg), HAL_MAX_DELAY);
+            NVIC_SystemReset();
+        }
     }
 }
 
@@ -255,20 +272,6 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
-//  HAL_CAN_Start(&hcan1);
-//  HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_1);
-//  HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_2);
-//  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
-//  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
-//  HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_1);
-//  HAL_TIM_IC_Start_IT(&htim8, TIM_CHANNEL_1);
-//
-//  // Enable interrupt đúng kênh
-//  __HAL_TIM_ENABLE_IT(&htim1, TIM_IT_CC1);
-//  __HAL_TIM_ENABLE_IT(&htim1, TIM_IT_CC2);
-//  __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_CC1);
-//  __HAL_TIM_ENABLE_IT(&htim4, TIM_IT_CC1);
-//  __HAL_TIM_ENABLE_IT(&htim8, TIM_IT_CC1);
   MFRC522_Init();
   BNO055_Init();
   HD44780_Init(2);       // LCD 2 dòng
@@ -285,7 +288,6 @@ int main(void)
 // // Activate the notification
 //  HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
 	    HAL_CAN_ActivateNotification(&hcan1,
-	        CAN_IT_RX_FIFO0_MSG_PENDING |
 	        CAN_IT_ERROR_WARNING |
 	        CAN_IT_ERROR_PASSIVE |
 	        CAN_IT_BUSOFF |
@@ -293,10 +295,11 @@ int main(void)
 	        CAN_IT_ERROR);
 //  DisplayTopicMenuUART();
 //  Send_All_SensorData_CAN();//  checkRFIDAndControlRelay();
-  HAL_TIM_Base_Start_IT(&htim7);
+	    HAL_TIM_Base_Start_IT(&htim7);
          HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET); // PA2 = 0 → Relay đỏ kích → NC ngắt → Đèn đỏ tắt
          HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);   // PA3 = 1 → Relay xanh không kích → Đèn xanh sáng
- 	  	Send_All_SensorData_CAN();
+         Send_All_SensorData_CAN();
+         Process_Ultrasonic_And_Control_Relay();
 
 
   /* USER CODE END 2 */
@@ -361,41 +364,8 @@ int main(void)
 	           last_tick_can_stat = HAL_GetTick();
 	       }
 
-	    // --- CAN watchdog ---
-	    static uint32_t last_can_watchdog = 0;
-	    static uint8_t can_fail_count = 0;
 
-	    if (HAL_GetTick() - last_can_watchdog >= 1000) { // Mỗi 1 giây
-	        last_can_watchdog = HAL_GetTick();
 
-	        if (can1_tx_success == 0) {
-	            can_fail_count++;
-	        } else {
-	            can_fail_count = 0; // reset nếu có gói gửi thành công
-	        }
-
-	        char msg[64];
-	        snprintf(msg, sizeof(msg), "\r\nCAN1 TX/s: %lu | RX/s: %lu\r\n",
-	                 can1_tx_success, can1_rx_success);
-	        HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
-
-	        // Reset thống kê mỗi giây
-	        can1_tx_success = 0;
-	        can1_rx_success = 0;
-
-	        if (can_fail_count >= 3) {  // Sau 3 giây không gửi được gói nào
-	            char msg[] = "⚠️ CAN1 timeout, restarting...\r\n";
-	            HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
-
-//	            HAL_CAN_Stop(&hcan1);
-	            HAL_CAN_DeInit(&hcan1);
-	            MX_CAN1_Init();
-	            HAL_CAN_Start(&hcan1);
-//	            HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
-
-	            can_fail_count = 0;
-	        }
-	    }
 
 
     /* USER CODE END WHILE */

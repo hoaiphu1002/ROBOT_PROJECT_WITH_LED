@@ -93,16 +93,16 @@ void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *hi2c)
 }
 
 // Callback khi có lỗi I2C
+// Thêm biến cờ toàn cục
+volatile uint8_t bno055_need_reset = 0;
+
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
 {
     if (hi2c->Instance == bno_i2c.Instance)
     {
         BNO055_I2C_Error = 1;
-        printf("I2C Error: %lu\r\n", hi2c->ErrorCode);
-
-        // Reset lại I2C bus
-        HAL_I2C_DeInit(&bno_i2c);
-        HAL_Delay(5);
-        HAL_I2C_Init(&bno_i2c);
+        bno055_need_reset = 1;   // báo cho main loop biết
     }
+
 }
+

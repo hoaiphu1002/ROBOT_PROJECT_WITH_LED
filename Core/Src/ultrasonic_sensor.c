@@ -166,4 +166,4 @@ void PrintAllDistances(void) {
              "Truoc2: %lucm | Trai: %lucm | Truoc1: %lucm | Phai: %lucm\r\n",
              Distances[0], Distances[1], Distances[2], Distances[3]);
     UART_SendString(buf);
-}
+	}

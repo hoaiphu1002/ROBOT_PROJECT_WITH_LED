@@ -1,4 +1,6 @@
-../Core/Src/can_tranceive.c:37:6:CAN_Loopback_Test	144	static
-../Core/Src/can_tranceive.c:61:19:CAN_SendString	96	static
-../Core/Src/can_tranceive.c:86:19:CAN_SendTopicData	32	static
-../Core/Src/can_tranceive.c:135:6:Send_All_SensorData_CAN	8	static
+../Core/Src/can_tranceive.c:44:6:BNO055_CheckAndRecover	8	static
+../Core/Src/can_tranceive.c:60:6:BNO055_IsStable	8	static
+../Core/Src/can_tranceive.c:66:6:CAN_Loopback_Test	144	static
+../Core/Src/can_tranceive.c:90:19:CAN_SendString	96	static
+../Core/Src/can_tranceive.c:115:19:CAN_SendTopicData	32	static
+../Core/Src/can_tranceive.c:179:6:Send_All_SensorData_CAN	64	static
