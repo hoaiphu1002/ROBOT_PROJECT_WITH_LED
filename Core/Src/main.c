@@ -186,7 +186,13 @@ static uint8_t can_recover_attempts = 0;
 void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan) {
     uint32_t err = hcan->ErrorCode;
 
-    // Chỉ xử lý các lỗi nghiêm trọng dễ gây nghẽn
+    if (err == HAL_CAN_ERROR_NONE) return;
+
+    char msg[128];
+    sprintf(msg, "⚠️ CAN Error: 0x%08lX\r\n", err);
+    HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+
+    // --- Nhóm lỗi nghiêm trọng cần reset CAN ---
     if (err & (HAL_CAN_ERROR_BOF |
                HAL_CAN_ERROR_ACK |
                HAL_CAN_ERROR_TX_TERR0 | HAL_CAN_ERROR_TX_TERR1 | HAL_CAN_ERROR_TX_TERR2 |
@@ -194,32 +200,41 @@ void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan) {
     {
         can_recover_attempts++;
 
-        // Thử phục hồi CAN
         HAL_CAN_Stop(hcan);
         HAL_CAN_DeInit(hcan);
         HAL_CAN_Init(hcan);
         HAL_CAN_Start(hcan);
 
         HAL_CAN_ConfigFilter(hcan, &canfilterconfig);
-
         HAL_CAN_ActivateNotification(hcan,
-            CAN_IT_ERROR_WARNING |
-            CAN_IT_ERROR_PASSIVE |
-            CAN_IT_BUSOFF |
-            CAN_IT_LAST_ERROR_CODE |
-            CAN_IT_ERROR);
+            CAN_IT_ERROR_WARNING | CAN_IT_ERROR_PASSIVE |
+            CAN_IT_BUSOFF | CAN_IT_LAST_ERROR_CODE | CAN_IT_ERROR);
 
-        char msg[128];
-        sprintf(msg, "⚡ CAN error (0x%08lX) recovered, attempt %d\r\n", err, can_recover_attempts);
+        sprintf(msg, "🔄 CAN recovered, attempt %d\r\n", can_recover_attempts);
         HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
 
-        // Nếu thử nhiều lần mà vẫn dính lỗi → reset MCU
-        if (can_recover_attempts >= 3) {
+        if (can_recover_attempts >= 5) {
             char resetmsg[] = "❌ CAN stuck, resetting MCU...\r\n";
             HAL_UART_Transmit(&huart1, (uint8_t*)resetmsg, strlen(resetmsg), HAL_MAX_DELAY);
             NVIC_SystemReset();
         }
     }
+
+    // --- Các lỗi nhẹ: chỉ log ---
+    if (err & HAL_CAN_ERROR_EWG)  printf("CAN Warning Error\r\n");
+    if (err & HAL_CAN_ERROR_EPV)  printf("CAN Passive Error\r\n");
+    if (err & HAL_CAN_ERROR_STF)  printf("CAN Stuff Error\r\n");
+    if (err & HAL_CAN_ERROR_FOR)  printf("CAN Form Error\r\n");
+    if (err & HAL_CAN_ERROR_BR)   printf("CAN Bit Recessive Error\r\n");
+    if (err & HAL_CAN_ERROR_BD)   printf("CAN Bit Dominant Error\r\n");
+    if (err & HAL_CAN_ERROR_CRC)  printf("CAN CRC Error\r\n");
+
+    // --- Timeout & init errors ---
+    if (err & HAL_CAN_ERROR_TIMEOUT)        printf("CAN Timeout Error\r\n");
+    if (err & HAL_CAN_ERROR_NOT_INITIALIZED)printf("CAN Not Init Error\r\n");
+    if (err & HAL_CAN_ERROR_NOT_READY)      printf("CAN Not Ready Error\r\n");
+    if (err & HAL_CAN_ERROR_NOT_STARTED)    printf("CAN Not Started Error\r\n");
+    if (err & HAL_CAN_ERROR_PARAM)          printf("CAN Parameter Error\r\n");
 }
 
 
@@ -599,7 +614,7 @@ static void MX_I2C3_Init(void)
 
   /* USER CODE END I2C3_Init 1 */
   hi2c3.Instance = I2C3;
-  hi2c3.Init.ClockSpeed = 200;
+  hi2c3.Init.ClockSpeed = 150;
   hi2c3.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c3.Init.OwnAddress1 = 0;
   hi2c3.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;

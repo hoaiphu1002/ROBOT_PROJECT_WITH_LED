@@ -165,13 +165,13 @@ void SelectPage(uint8_t page){  //BNO055 có 2 page thanh ghi: PAGE 0 và PAGE 1
   *
   * @retval None
   */
-void ResetBNO055(void){ 
+void ResetBNO055(void){
 	//Gửi lệnh reset phần mềm (0x20 vào SYS_TRIGGER_ADDR)
 	//Kiểm tra chip ID(phải bằng 0xA0) để đảm bảo reset thành công
 
 	uint8_t reset = 0x20;
 	BNO055_IT_Write(P_BNO055, SYS_TRIGGER_ADDR, &reset, 1);
-	HAL_Delay(500);
+	HAL_Delay(200);
 
 	//Checking for is reset process done
 	uint8_t chip_id=0;
@@ -181,7 +181,7 @@ void ResetBNO055(void){
 		BNO055_IT_Read(P_BNO055, CHIP_ID_ADDR, &chip_id, 1);
 		if(chip_id != BNO055_ID){
 			printf("BNO055-> Undefined chip id\n");
-			HAL_Delay(500);
+			HAL_Delay(100);
 		}
 	} while(chip_id != BNO055_ID);
 }
@@ -754,5 +754,3 @@ void BNO055_PrintEulerDebug(void)
     sprintf(msg, "DEBUG: Roll=%.2f°, Pitch=%.2f°, Yaw=%.2f°\r\n", roll, pitch, yaw);
     HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
 }
-
-

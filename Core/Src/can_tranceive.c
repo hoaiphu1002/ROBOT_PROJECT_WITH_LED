@@ -39,27 +39,62 @@ extern volatile uint32_t can_rx_count ;
 #define ENABLE_DEBUG_CAN 0  // bật = 1 nếu muốn in gói CAN qua UART
 
 static uint32_t imu_reset_time = 0;
+static uint8_t imu_recover_fail_count = 0;
+
 extern volatile uint8_t bno055_need_reset;
+extern volatile uint8_t BNO055_I2C_Done;
+extern volatile uint8_t BNO055_I2C_Error;
 
 void BNO055_CheckAndRecover(void)
 {
     if (bno055_need_reset) {
-        bno055_need_reset = 0;
+        bno055_need_reset = 0;  // clear flag ngay
 
-        HAL_I2C_DeInit(&bno_i2c);
-        HAL_Delay(5);
-        HAL_I2C_Init(&bno_i2c);
+        if (HAL_GetTick() - imu_reset_time > 2000) {  // 2 giây mới cho reset 1 lần
+            imu_reset_time = HAL_GetTick();
 
-        BNO055_Init();  // bắt buộc init lại mode
+            printf("⚠️ IMU recover attempt...\r\n");
 
-        imu_reset_time = HAL_GetTick();  // đánh dấu thời điểm reset
-        printf("✅ BNO055 reset, đợi ổn định...\r\n");
+            // 1. Giải phóng và re-init I2C
+            HAL_I2C_DeInit(&bno_i2c);
+            HAL_Delay(5);
+            HAL_I2C_Init(&bno_i2c);
+
+            // 2. Reset và init lại IMU
+            ResetBNO055();
+            BNO055_Init();
+
+            // 3. Check lại SYS_STATUS
+            uint8_t sys_status = 0;
+            BNO055_IT_Read(P_BNO055, SYS_STATUS_ADDR, &sys_status, 1);
+
+            if (sys_status == 5) {
+                // Fusion algorithm OK
+                imu_recover_fail_count = 0;   // clear fail counter
+                printf("✅ IMU recovered successfully\r\n");
+            } else {
+                imu_recover_fail_count++;
+                printf("❌ IMU recover failed (%d)\r\n", imu_recover_fail_count);
+
+                // Nếu thất bại liên tiếp 3 lần → reset toàn MCU
+                if (imu_recover_fail_count >= 3) {
+                    printf("🚨 Too many IMU failures → system reset\r\n");
+                    NVIC_SystemReset();
+                }
+            }
+
+            // 4. Clear cờ lỗi
+            BNO055_I2C_Error = 0;
+            BNO055_I2C_Done  = 0;
+        }
     }
 }
 
+
+
 bool BNO055_IsStable(void)
 {
-    return (HAL_GetTick() - imu_reset_time > 500);  // chờ 1 giây
+    return (HAL_GetTick() - imu_reset_time > 600);  // chờ 1 giây
 }
 
 
@@ -187,6 +222,10 @@ void Send_All_SensorData_CAN(void)
               BNO055_SendEulerCAN();
           } else {
               // bỏ qua dữ liệu trong lúc IMU đang ổn định lại
+              HAL_I2C_DeInit(&bno_i2c);
+              HAL_Delay(5);
+              HAL_I2C_Init(&bno_i2c);
+
           }
     }
 
