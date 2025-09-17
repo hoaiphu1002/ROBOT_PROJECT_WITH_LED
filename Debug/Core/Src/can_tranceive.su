@@ -1,7 +1,7 @@
 ../Drivers/CMSIS/Include/core_cm4.h:1938:34:__NVIC_SystemReset	4	static,ignoring_inline_asm
-../Core/Src/can_tranceive.c:49:6:BNO055_CheckAndRecover	104	static
-../Core/Src/can_tranceive.c:116:6:BNO055_IsStable	8	static
-../Core/Src/can_tranceive.c:122:6:CAN_Loopback_Test	144	static
-../Core/Src/can_tranceive.c:146:19:CAN_SendString	96	static
-../Core/Src/can_tranceive.c:171:19:CAN_SendTopicData	32	static
-../Core/Src/can_tranceive.c:235:6:Send_All_SensorData_CAN	64	static
+../Core/Src/can_tranceive.c:49:6:BNO055_CheckAndRecover	112	static
+../Core/Src/can_tranceive.c:130:6:BNO055_IsStable	8	static
+../Core/Src/can_tranceive.c:136:6:CAN_Loopback_Test	144	static
+../Core/Src/can_tranceive.c:160:19:CAN_SendString	96	static
+../Core/Src/can_tranceive.c:185:19:CAN_SendTopicData	32	static
+../Core/Src/can_tranceive.c:249:6:Send_All_SensorData_CAN	64	static

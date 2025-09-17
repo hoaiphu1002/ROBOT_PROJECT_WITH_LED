@@ -279,94 +279,90 @@ void I2C_ManualBusRecovery(void)
 
 
 extern volatile uint8_t bno055_need_reset;
-void ReadData(BNO055_Sensors_t *sensorData,BNO055_Sensor_Type sensors){ //Đọc dữ liệu cảm biến
 
-	//Dựa vào kiểu dữ liệu được chọn (SENSOR_ACCEL, SENSOR_EULER, v.v.), đọc đúng thanh ghi từ BNO055.
-	//Dữ liệu đọc được scale đúng đơn vị(e.g.chia cho 100.0 hoặc 16.0).
-	//Dữ liệu gán vào struct sensorData
-	uint8_t buffer[8];
+void ReadData(BNO055_Sensors_t *sensorData, BNO055_Sensor_Type sensors)
+{
+    uint8_t buffer[8];
 
-	if (sensors & SENSOR_GRAVITY) {
-		BNO055_IT_Read(P_BNO055, BNO_GRAVITY, buffer, 6);
-		sensorData->Gravity.X = (float)(((int16_t)((buffer[1] << 8) | buffer[0]))/100.0); // chia cho 100 để quy đổi ra đơn vị chuẩn
-		sensorData->Gravity.Y = (float)(((int16_t)((buffer[3] << 8) | buffer[2]))/100.0);
-		sensorData->Gravity.Z = (float)(((int16_t)((buffer[5] << 8) | buffer[4]))/100.0);
-		memset(buffer, 0, sizeof(buffer));
-	}
+    if (sensors & SENSOR_GRAVITY) {
+        if (BNO055_IT_Read(P_BNO055, BNO_GRAVITY, buffer, 6) == HAL_OK) {
+            sensorData->Gravity.X = (int16_t)((buffer[1] << 8) | buffer[0]) / 100.0f;
+            sensorData->Gravity.Y = (int16_t)((buffer[3] << 8) | buffer[2]) / 100.0f;
+            sensorData->Gravity.Z = (int16_t)((buffer[5] << 8) | buffer[4]) / 100.0f;
+        } else {
+            printf("❌ Gravity read error\r\n");
+            bno055_need_reset = 1;
+        }
+    }
 
-	if (sensors & SENSOR_QUATERNION) {
-		BNO055_IT_Read(P_BNO055, BNO_QUATERNION, buffer, 8);
-		sensorData->Quaternion.W = (float)(((int16_t)((buffer[1] << 8) | buffer[0]))/(1<<14));
-		sensorData->Quaternion.X = (float)(((int16_t)((buffer[3] << 8) | buffer[2]))/(1<<14));
-		sensorData->Quaternion.Y = (float)(((int16_t)((buffer[5] << 8) | buffer[4]))/(1<<14));
-		sensorData->Quaternion.Z = (float)(((int16_t)((buffer[7] << 8) | buffer[6]))/(1<<14));
-		memset(buffer, 0, sizeof(buffer));
-	}
+    if (sensors & SENSOR_QUATERNION) {
+        if (BNO055_IT_Read(P_BNO055, BNO_QUATERNION, buffer, 8) == HAL_OK) {
+            sensorData->Quaternion.W = (int16_t)((buffer[1] << 8) | buffer[0]) / (1 << 14);
+            sensorData->Quaternion.X = (int16_t)((buffer[3] << 8) | buffer[2]) / (1 << 14);
+            sensorData->Quaternion.Y = (int16_t)((buffer[5] << 8) | buffer[4]) / (1 << 14);
+            sensorData->Quaternion.Z = (int16_t)((buffer[7] << 8) | buffer[6]) / (1 << 14);
+        } else {
+            printf("❌ Quaternion read error\r\n");
+            bno055_need_reset = 1;
+        }
+    }
 
-	if (sensors & SENSOR_LINACC) {
-		BNO055_IT_Read(P_BNO055, BNO_LINACC, buffer, 6);
-		sensorData->LineerAcc.X = (float)(((int16_t)((buffer[1] << 8) | buffer[0]))/100.0);
-		sensorData->LineerAcc.Y = (float)(((int16_t)((buffer[3] << 8) | buffer[2]))/100.0);
-		sensorData->LineerAcc.Z = (float)(((int16_t)((buffer[5] << 8) | buffer[4]))/100.0);
-		memset(buffer, 0, sizeof(buffer));
-	}
+    if (sensors & SENSOR_LINACC) {
+        if (BNO055_IT_Read(P_BNO055, BNO_LINACC, buffer, 6) == HAL_OK) {
+            sensorData->LineerAcc.X = (int16_t)((buffer[1] << 8) | buffer[0]) / 100.0f;
+            sensorData->LineerAcc.Y = (int16_t)((buffer[3] << 8) | buffer[2]) / 100.0f;
+            sensorData->LineerAcc.Z = (int16_t)((buffer[5] << 8) | buffer[4]) / 100.0f;
+        } else {
+            printf("❌ Linear Acc read error\r\n");
+            bno055_need_reset = 1;
+        }
+    }
 
-	if (sensors & SENSOR_GYRO) {
-		BNO055_IT_Read(P_BNO055, BNO_GYRO, buffer, 6);
-		sensorData->Gyro.X = (float)(((int16_t) ((buffer[1] << 8) | buffer[0]))/16.0);
-		sensorData->Gyro.Y = (float)(((int16_t) ((buffer[3] << 8) | buffer[2]))/16.0);
-		sensorData->Gyro.Z = (float)(((int16_t) ((buffer[5] << 8) | buffer[4]))/16.0);
-		memset(buffer, 0, sizeof(buffer));
-	}
-	if (sensors & SENSOR_ACCEL) {
-		BNO055_IT_Read(P_BNO055, BNO_ACCEL, buffer, 6);
-		sensorData->Accel.X = (float)(((int16_t) ((buffer[1] << 8) | buffer[0]))/100.0);
-		sensorData->Accel.Y = (float)(((int16_t) ((buffer[3] << 8) | buffer[2]))/100.0);
-		sensorData->Accel.Z = (float)(((int16_t) ((buffer[5] << 8) | buffer[4]))/100.0);
-		memset(buffer, 0, sizeof(buffer));
-	}
-	if (sensors & SENSOR_MAG) {
-		BNO055_IT_Read(P_BNO055, BNO_MAG, buffer, 6);
-		sensorData->Magneto.X = (float)(((int16_t) ((buffer[1] << 8) | buffer[0]))/16.0);
-		sensorData->Magneto.Y = (float)(((int16_t) ((buffer[3] << 8) | buffer[2]))/16.0);
-		sensorData->Magneto.Z = (float)(((int16_t) ((buffer[5] << 8) | buffer[4]))/16.0);
-		memset(buffer, 0, sizeof(buffer));
-	}
-	if (sensors & SENSOR_EULER) {
-	    HAL_StatusTypeDef ret = BNO055_IT_Read(P_BNO055, BNO_EULER, buffer, 6);
+    if (sensors & SENSOR_GYRO) {
+        if (BNO055_IT_Read(P_BNO055, BNO_GYRO, buffer, 6) == HAL_OK) {
+            sensorData->Gyro.X = (int16_t)((buffer[1] << 8) | buffer[0]) / 16.0f;
+            sensorData->Gyro.Y = (int16_t)((buffer[3] << 8) | buffer[2]) / 16.0f;
+            sensorData->Gyro.Z = (int16_t)((buffer[5] << 8) | buffer[4]) / 16.0f;
+        } else {
+            printf("❌ Gyro read error\r\n");
+            bno055_need_reset = 1;
+        }
+    }
 
-	    if (ret == HAL_OK) {
-	        float new_yaw   = (float)(((int16_t)((buffer[1] << 8) | buffer[0])) / 16.0f);
-	        float new_pitch = (float)(((int16_t)((buffer[3] << 8) | buffer[2])) / 16.0f);
-	        float new_roll  = (float)(((int16_t)((buffer[5] << 8) | buffer[4])) / 16.0f);
+    if (sensors & SENSOR_ACCEL) {
+        if (BNO055_IT_Read(P_BNO055, BNO_ACCEL, buffer, 6) == HAL_OK) {
+            sensorData->Accel.X = (int16_t)((buffer[1] << 8) | buffer[0]) / 100.0f;
+            sensorData->Accel.Y = (int16_t)((buffer[3] << 8) | buffer[2]) / 100.0f;
+            sensorData->Accel.Z = (int16_t)((buffer[5] << 8) | buffer[4]) / 100.0f;
+        } else {
+            printf("❌ Accel read error\r\n");
+            bno055_need_reset = 1;
+        }
+    }
 
-	        // 🔹 Euler watchdog
-	        static float last_yaw = 0;
-	        static uint32_t last_update = 0;
+    if (sensors & SENSOR_MAG) {
+        if (BNO055_IT_Read(P_BNO055, BNO_MAG, buffer, 6) == HAL_OK) {
+            sensorData->Magneto.X = (int16_t)((buffer[1] << 8) | buffer[0]) / 16.0f;
+            sensorData->Magneto.Y = (int16_t)((buffer[3] << 8) | buffer[2]) / 16.0f;
+            sensorData->Magneto.Z = (int16_t)((buffer[5] << 8) | buffer[4]) / 16.0f;
+        } else {
+            printf("❌ Magneto read error\r\n");
+            bno055_need_reset = 1;
+        }
+    }
 
-	        if (fabs(new_yaw - last_yaw) < 0.01f) {
-	            if (HAL_GetTick() - last_update > 500) {
-	                printf("⚠️ Euler stuck → reset IMU\r\n");
-	                bno055_need_reset = 1;
-	            }
-	        } else {
-	            last_update = HAL_GetTick();
-	            last_yaw = new_yaw;
-	        }
-
-	        // cập nhật dữ liệu vào struct
-	        sensorData->Euler.X = new_yaw;
-	        sensorData->Euler.Y = new_pitch;
-	        sensorData->Euler.Z = new_roll;
-	    } else {
-	        printf("❌ Euler read error\r\n");
-	        bno055_need_reset = 1;
-	    }
-
-	    memset(buffer, 0, sizeof(buffer));
-	}
-
+    if (sensors & SENSOR_EULER) {
+        if (BNO055_IT_Read(P_BNO055, BNO_EULER, buffer, 6) == HAL_OK) {
+            sensorData->Euler.X = (int16_t)((buffer[1] << 8) | buffer[0]) / 16.0f; // yaw
+            sensorData->Euler.Y = (int16_t)((buffer[3] << 8) | buffer[2]) / 16.0f; // pitch
+            sensorData->Euler.Z = (int16_t)((buffer[5] << 8) | buffer[4]) / 16.0f; // roll
+        } else {
+            printf("❌ Euler read error\r\n");
+            bno055_need_reset = 1;
+        }
+    }
 }
+
 
 
 /*!
