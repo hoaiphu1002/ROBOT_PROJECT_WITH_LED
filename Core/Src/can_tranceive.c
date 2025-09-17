@@ -48,27 +48,40 @@ extern volatile uint8_t BNO055_I2C_Error;
 
 void BNO055_CheckAndRecover(void)
 {
-    static BNO055_Sensors_t last_data;       // dữ liệu lần trước
-    static uint32_t last_update_time = 0;    // thời điểm cập nhật cuối
+    static float last_yaw = 0, last_pitch = 0, last_roll = 0;
+    static uint32_t last_update_time = 0;
     static uint8_t first_run = 1;
 
     // --- 1. Watchdog dữ liệu ---
     BNO055_Sensors_t current;
-    ReadData(&current, SENSOR_EULER); // hoặc SENSOR_QUATERNION tùy bạn dùng
+    ReadData(&current, SENSOR_EULER | SENSOR_GYRO);
 
     if (first_run) {
-        last_data = current;
+        last_yaw = current.Euler.X;
+        last_pitch = current.Euler.Y;
+        last_roll = current.Euler.Z;
         last_update_time = HAL_GetTick();
         first_run = 0;
     } else {
-        if (memcmp(&current, &last_data, sizeof(BNO055_Sensors_t)) != 0) {
-            // dữ liệu thay đổi -> update lại
-            last_data = current;
+        bool euler_changed = (fabs(current.Euler.X - last_yaw) > 0.01f ||
+                              fabs(current.Euler.Y - last_pitch) > 0.01f ||
+                              fabs(current.Euler.Z - last_roll) > 0.01f);
+
+        if (euler_changed) {
+            last_yaw = current.Euler.X;
+            last_pitch = current.Euler.Y;
+            last_roll = current.Euler.Z;
             last_update_time = HAL_GetTick();
-        } else if (HAL_GetTick() - last_update_time > 200) {
-            // dữ liệu không đổi >200ms → coi như treo
-            printf("⚠️ IMU data frozen, trigger reset\r\n");
-            bno055_need_reset = 1;
+        } else {
+            // Nếu dữ liệu không đổi > 500ms và cũng là (0,0,0) → nghi treo
+            bool all_zero = (fabs(current.Euler.X) < 0.01f &&
+                             fabs(current.Euler.Y) < 0.01f &&
+                             fabs(current.Euler.Z) < 0.01f);
+
+            if (all_zero && (HAL_GetTick() - last_update_time > 500)) {
+                printf("⚠️ IMU Euler stuck at 0 → reset needed\r\n");
+                bno055_need_reset = 1;
+            }
         }
     }
 
@@ -78,7 +91,7 @@ void BNO055_CheckAndRecover(void)
             imu_reset_time = HAL_GetTick();
             printf("⚠️ IMU recover attempt...\r\n");
 
-            // 1. Reset I2C bus
+            // 1. Reset I2C bus trước
             I2C_ManualBusRecovery();
 
             // 2. Reset IMU
@@ -111,6 +124,7 @@ void BNO055_CheckAndRecover(void)
         }
     }
 }
+
 
 
 bool BNO055_IsStable(void)
