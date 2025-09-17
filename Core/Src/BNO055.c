@@ -227,55 +227,57 @@ void I2C_ManualBusRecovery(void)
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-    // 1. Tắt I2C peripheral
+    // 1. Tắt I2C peripheral (dùng I2C3)
     HAL_I2C_DeInit(&bno_i2c);
 
-    // 2. Cấu hình SCL, SDA thành GPIO output open-drain
-    __HAL_RCC_GPIOB_CLK_ENABLE();
+    // 2. Bật clock cho GPIOA, GPIOC
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
 
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    // 3. Cấu hình SCL (PA8) và SDA (PC9) làm output open-drain
+    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_OD;
+    GPIO_InitStruct.Pull  = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
 
-    // SCL = PB6
-    GPIO_InitStruct.Pin = GPIO_PIN_6;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    // PA8 = SCL
+    GPIO_InitStruct.Pin = GPIO_PIN_8;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    // SDA = PB7
-    GPIO_InitStruct.Pin = GPIO_PIN_7;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    // PC9 = SDA
+    GPIO_InitStruct.Pin = GPIO_PIN_9;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-    // 3. Phát 9 xung clock trên SCL để giải phóng SDA
+    // 4. Phát 9 xung clock trên SCL để giải phóng SDA
     for (int i = 0; i < 9; i++) {
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);   // SCL High
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // SCL high
         HAL_Delay(1);
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET); // SCL Low
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET); // SCL low
         HAL_Delay(1);
     }
 
-    // 4. Phát STOP condition giả
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET); // SDA Low
+    // 5. Phát STOP condition giả: SDA low -> SCL high -> SDA high
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET); // SDA low
     HAL_Delay(1);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);   // SCL High
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);   // SCL high
     HAL_Delay(1);
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);   // SDA High
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);   // SDA high
     HAL_Delay(1);
 
-    // 5. Trả lại GPIO cho peripheral I2C
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
-    GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
+    // 6. Trả lại GPIO cho peripheral I2C3
+    GPIO_InitStruct.Mode      = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Alternate = GPIO_AF4_I2C3;
+    GPIO_InitStruct.Pin       = GPIO_PIN_8; // PA8 (SCL)
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = GPIO_PIN_6; // SCL
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin = GPIO_PIN_9; // PC9 (SDA)
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = GPIO_PIN_7; // SDA
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-    // 6. Bật lại I2C
+    // 7. Bật lại I2C3
     HAL_I2C_Init(&bno_i2c);
 
-    printf("🔄 I2C bus recovered\r\n");
+    printf("🔄 I2C3 bus recovered (PA8-SCL, PC9-SDA)\r\n");
 }
+
 
 
 extern volatile uint8_t bno055_need_reset;
