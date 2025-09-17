@@ -289,9 +289,6 @@ void ReadData(BNO055_Sensors_t *sensorData, BNO055_Sensor_Type sensors)
             sensorData->Gravity.X = (int16_t)((buffer[1] << 8) | buffer[0]) / 100.0f;
             sensorData->Gravity.Y = (int16_t)((buffer[3] << 8) | buffer[2]) / 100.0f;
             sensorData->Gravity.Z = (int16_t)((buffer[5] << 8) | buffer[4]) / 100.0f;
-        } else {
-            printf("❌ Gravity read error\r\n");
-            bno055_need_reset = 1;
         }
     }
 
@@ -301,9 +298,6 @@ void ReadData(BNO055_Sensors_t *sensorData, BNO055_Sensor_Type sensors)
             sensorData->Quaternion.X = (int16_t)((buffer[3] << 8) | buffer[2]) / (1 << 14);
             sensorData->Quaternion.Y = (int16_t)((buffer[5] << 8) | buffer[4]) / (1 << 14);
             sensorData->Quaternion.Z = (int16_t)((buffer[7] << 8) | buffer[6]) / (1 << 14);
-        } else {
-            printf("❌ Quaternion read error\r\n");
-            bno055_need_reset = 1;
         }
     }
 
@@ -312,9 +306,6 @@ void ReadData(BNO055_Sensors_t *sensorData, BNO055_Sensor_Type sensors)
             sensorData->LineerAcc.X = (int16_t)((buffer[1] << 8) | buffer[0]) / 100.0f;
             sensorData->LineerAcc.Y = (int16_t)((buffer[3] << 8) | buffer[2]) / 100.0f;
             sensorData->LineerAcc.Z = (int16_t)((buffer[5] << 8) | buffer[4]) / 100.0f;
-        } else {
-            printf("❌ Linear Acc read error\r\n");
-            bno055_need_reset = 1;
         }
     }
 
@@ -323,9 +314,6 @@ void ReadData(BNO055_Sensors_t *sensorData, BNO055_Sensor_Type sensors)
             sensorData->Gyro.X = (int16_t)((buffer[1] << 8) | buffer[0]) / 16.0f;
             sensorData->Gyro.Y = (int16_t)((buffer[3] << 8) | buffer[2]) / 16.0f;
             sensorData->Gyro.Z = (int16_t)((buffer[5] << 8) | buffer[4]) / 16.0f;
-        } else {
-            printf("❌ Gyro read error\r\n");
-            bno055_need_reset = 1;
         }
     }
 
@@ -334,9 +322,6 @@ void ReadData(BNO055_Sensors_t *sensorData, BNO055_Sensor_Type sensors)
             sensorData->Accel.X = (int16_t)((buffer[1] << 8) | buffer[0]) / 100.0f;
             sensorData->Accel.Y = (int16_t)((buffer[3] << 8) | buffer[2]) / 100.0f;
             sensorData->Accel.Z = (int16_t)((buffer[5] << 8) | buffer[4]) / 100.0f;
-        } else {
-            printf("❌ Accel read error\r\n");
-            bno055_need_reset = 1;
         }
     }
 
@@ -356,9 +341,6 @@ void ReadData(BNO055_Sensors_t *sensorData, BNO055_Sensor_Type sensors)
             sensorData->Euler.X = (int16_t)((buffer[1] << 8) | buffer[0]) / 16.0f; // yaw
             sensorData->Euler.Y = (int16_t)((buffer[3] << 8) | buffer[2]) / 16.0f; // pitch
             sensorData->Euler.Z = (int16_t)((buffer[5] << 8) | buffer[4]) / 16.0f; // roll
-        } else {
-            printf("❌ Euler read error\r\n");
-            bno055_need_reset = 1;
         }
     }
 }
