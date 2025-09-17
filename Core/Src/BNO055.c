@@ -332,9 +332,6 @@ void ReadData(BNO055_Sensors_t *sensorData, BNO055_Sensor_Type sensors)
             sensorData->Magneto.X = (int16_t)((buffer[1] << 8) | buffer[0]) / 16.0f;
             sensorData->Magneto.Y = (int16_t)((buffer[3] << 8) | buffer[2]) / 16.0f;
             sensorData->Magneto.Z = (int16_t)((buffer[5] << 8) | buffer[4]) / 16.0f;
-        } else {
-            printf("❌ Magneto read error\r\n");
-            bno055_need_reset = 1;
         }
     }
 

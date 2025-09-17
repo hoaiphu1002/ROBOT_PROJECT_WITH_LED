@@ -38,6 +38,13 @@ extern volatile uint32_t can_rx_count ;
 
 #define ENABLE_DEBUG_CAN 0  // bật = 1 nếu muốn in gói CAN qua UART
 
+
+
+extern volatile uint8_t bno055_need_reset;
+extern volatile uint8_t BNO055_I2C_Done;
+extern volatile uint8_t BNO055_I2C_Error;
+
+// Các biến toàn cục cần có
 static uint32_t imu_reset_time = 0;
 static uint8_t imu_recover_fail_count = 0;
 
@@ -45,30 +52,55 @@ extern volatile uint8_t bno055_need_reset;
 extern volatile uint8_t BNO055_I2C_Done;
 extern volatile uint8_t BNO055_I2C_Error;
 
-
 void BNO055_CheckAndRecover(void)
 {
-    static BNO055_Sensors_t last_data;       // dữ liệu lần trước
-    static uint32_t last_update_time = 0;    // thời điểm cập nhật cuối
+    static float last_yaw = 0, last_pitch = 0, last_roll = 0;
+    static uint32_t last_update_time = 0;
     static uint8_t first_run = 1;
 
     // --- 1. Watchdog dữ liệu ---
     BNO055_Sensors_t current;
-    ReadData(&current, SENSOR_EULER); // hoặc SENSOR_QUATERNION tùy bạn dùng
+    ReadData(&current, SENSOR_EULER | SENSOR_GYRO);
 
     if (first_run) {
-        last_data = current;
+        last_yaw   = current.Euler.X;
+        last_pitch = current.Euler.Y;
+        last_roll  = current.Euler.Z;
         last_update_time = HAL_GetTick();
         first_run = 0;
     } else {
-        if (memcmp(&current, &last_data, sizeof(BNO055_Sensors_t)) != 0) {
-            // dữ liệu thay đổi -> update lại
-            last_data = current;
+        bool changed = (fabs(current.Euler.X - last_yaw) > 0.01f ||
+                        fabs(current.Euler.Y - last_pitch) > 0.01f ||
+                        fabs(current.Euler.Z - last_roll) > 0.01f);
+
+        if (changed) {
+            last_yaw   = current.Euler.X;
+            last_pitch = current.Euler.Y;
+            last_roll  = current.Euler.Z;
             last_update_time = HAL_GetTick();
-        } else if (HAL_GetTick() - last_update_time > 200) {
-            // dữ liệu không đổi >200ms → coi như treo
-            printf("⚠️ IMU data frozen, trigger reset\r\n");
-            bno055_need_reset = 1;
+        } else {
+            uint32_t now = HAL_GetTick();
+
+            // 1. Check stuck = (0,0,0)
+            bool all_zero = (fabs(current.Euler.X) < 0.01f &&
+                             fabs(current.Euler.Y) < 0.01f &&
+                             fabs(current.Euler.Z) < 0.01f);
+
+            if (all_zero && (now - last_update_time > 200)) {
+                printf("⚠️ IMU stuck at (0,0,0) → reset\r\n");
+                bno055_need_reset = 1;
+            }
+
+            // 2. Nếu dữ liệu không đổi lâu nhưng Gyro ≠ 0 → reset
+            else if ((now - last_update_time > 500) &&
+                     (fabs(current.Gyro.X) > 0.1f ||
+                      fabs(current.Gyro.Y) > 0.1f ||
+                      fabs(current.Gyro.Z) > 0.1f)) {
+                printf("⚠️ IMU Euler not updating while Gyro active → reset\r\n");
+                bno055_need_reset = 1;
+            }
+
+            // 3. Nếu dữ liệu không đổi và Gyro ≈ 0 → xe đứng yên → không reset
         }
     }
 
@@ -90,7 +122,7 @@ void BNO055_CheckAndRecover(void)
             do {
                 BNO055_IT_Read(P_BNO055, SYS_STATUS_ADDR, &sys_status, 1);
                 HAL_Delay(20);
-            } while (sys_status != 5 && (HAL_GetTick() - start < 3000));
+            } while (sys_status != 5 && (HAL_GetTick() - start < 2000));
 
             if (sys_status == 5) {
                 imu_recover_fail_count = 0;
@@ -111,6 +143,7 @@ void BNO055_CheckAndRecover(void)
         }
     }
 }
+
 
 
 bool BNO055_IsStable(void)
