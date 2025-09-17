@@ -8646,7 +8646,7 @@ LOAD D:/SOFTWARE/en.st-stm32cubeide_1.18.1_24813_20250409_2138_x86_64.exe/STM32C
 LOAD D:/SOFTWARE/en.st-stm32cubeide_1.18.1_24813_20250409_2138_x86_64.exe/STM32CubeIDE_1.18.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.13.3.rel1.win32_1.0.0.202411081344/tools/bin/../lib/gcc/arm-none-eabi/13.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libm.a
 LOAD D:/SOFTWARE/en.st-stm32cubeide_1.18.1_24813_20250409_2138_x86_64.exe/STM32CubeIDE_1.18.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.13.3.rel1.win32_1.0.0.202411081344/tools/bin/../lib/gcc/arm-none-eabi/13.3.1/thumb/v7e-m+fp/hard\libgcc.a
 
-.debug_info     0x00000000    0x21c5f
+.debug_info     0x00000000    0x21c2f
  .debug_info    0x00000000      0x7e7 ./Core/Src/BN055_IT.o
  .debug_info    0x000007e7     0x166a ./Core/Src/BNO055.o
  .debug_info    0x00001e51      0xac1 ./Core/Src/Debug.o
@@ -8654,33 +8654,33 @@ LOAD D:/SOFTWARE/en.st-stm32cubeide_1.18.1_24813_20250409_2138_x86_64.exe/STM32C
  .debug_info    0x000034c1      0xc76 ./Core/Src/RC522.o
  .debug_info    0x00004137      0xc23 ./Core/Src/can_receive.o
  .debug_info    0x00004d5a      0x5e2 ./Core/Src/can_send_noblocking.o
- .debug_info    0x0000533c     0x19da ./Core/Src/can_tranceive.o
- .debug_info    0x00006d16      0xfd2 ./Core/Src/checkstatus.o
- .debug_info    0x00007ce8      0x6f7 ./Core/Src/led_control.o
- .debug_info    0x000083df      0xc64 ./Core/Src/liquidcrystal_i2c.o
- .debug_info    0x00009043     0x2e3b ./Core/Src/main.o
- .debug_info    0x0000be7e      0xab8 ./Core/Src/rfid.o
- .debug_info    0x0000c936     0x2089 ./Core/Src/stm32f4xx_hal_msp.o
- .debug_info    0x0000e9bf     0x1477 ./Core/Src/stm32f4xx_it.o
- .debug_info    0x0000fe36      0x6a3 ./Core/Src/syscalls.o
- .debug_info    0x000104d9      0x168 ./Core/Src/sysmem.o
- .debug_info    0x00010641      0x512 ./Core/Src/system_stm32f4xx.o
- .debug_info    0x00010b53      0xf8b ./Core/Src/ultrasonic_sensor.o
- .debug_info    0x00011ade       0x30 ./Core/Startup/startup_stm32f407vgtx.o
- .debug_info    0x00011b0e      0x944 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.o
- .debug_info    0x00012452      0xce3 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc.o
- .debug_info    0x00013135      0xb68 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc_ex.o
- .debug_info    0x00013c9d      0xf49 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_can.o
- .debug_info    0x00014be6      0xd8c ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.o
- .debug_info    0x00015972      0x37f ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_crc.o
- .debug_info    0x00015cf1      0x8e7 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma.o
- .debug_info    0x000165d8      0x6c3 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_gpio.o
- .debug_info    0x00016c9b     0x2415 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c.o
- .debug_info    0x000190b0      0x8c3 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.o
- .debug_info    0x00019973     0x1525 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_spi.o
- .debug_info    0x0001ae98     0x299d ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.o
- .debug_info    0x0001d835     0x14db ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.o
- .debug_info    0x0001ed10     0x2f4f ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.o
+ .debug_info    0x0000533c     0x19aa ./Core/Src/can_tranceive.o
+ .debug_info    0x00006ce6      0xfd2 ./Core/Src/checkstatus.o
+ .debug_info    0x00007cb8      0x6f7 ./Core/Src/led_control.o
+ .debug_info    0x000083af      0xc64 ./Core/Src/liquidcrystal_i2c.o
+ .debug_info    0x00009013     0x2e3b ./Core/Src/main.o
+ .debug_info    0x0000be4e      0xab8 ./Core/Src/rfid.o
+ .debug_info    0x0000c906     0x2089 ./Core/Src/stm32f4xx_hal_msp.o
+ .debug_info    0x0000e98f     0x1477 ./Core/Src/stm32f4xx_it.o
+ .debug_info    0x0000fe06      0x6a3 ./Core/Src/syscalls.o
+ .debug_info    0x000104a9      0x168 ./Core/Src/sysmem.o
+ .debug_info    0x00010611      0x512 ./Core/Src/system_stm32f4xx.o
+ .debug_info    0x00010b23      0xf8b ./Core/Src/ultrasonic_sensor.o
+ .debug_info    0x00011aae       0x30 ./Core/Startup/startup_stm32f407vgtx.o
+ .debug_info    0x00011ade      0x944 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.o
+ .debug_info    0x00012422      0xce3 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc.o
+ .debug_info    0x00013105      0xb68 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc_ex.o
+ .debug_info    0x00013c6d      0xf49 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_can.o
+ .debug_info    0x00014bb6      0xd8c ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.o
+ .debug_info    0x00015942      0x37f ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_crc.o
+ .debug_info    0x00015cc1      0x8e7 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma.o
+ .debug_info    0x000165a8      0x6c3 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_gpio.o
+ .debug_info    0x00016c6b     0x2415 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c.o
+ .debug_info    0x00019080      0x8c3 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.o
+ .debug_info    0x00019943     0x1525 ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_spi.o
+ .debug_info    0x0001ae68     0x299d ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.o
+ .debug_info    0x0001d805     0x14db ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.o
+ .debug_info    0x0001ece0     0x2f4f ./Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.o
 
 .debug_abbrev   0x00000000     0x4c1c
  .debug_abbrev  0x00000000      0x1dd ./Core/Src/BN055_IT.o
@@ -9050,7 +9050,7 @@ LOAD D:/SOFTWARE/en.st-stm32cubeide_1.18.1_24813_20250409_2138_x86_64.exe/STM32C
  .debug_str     0x000e4104    0xd6219 ./Core/Src/RC522.o
  .debug_str     0x000e4104    0xdb5ae ./Core/Src/can_receive.o
  .debug_str     0x000e4104    0xd5873 ./Core/Src/can_send_noblocking.o
- .debug_str     0x000e4104    0xdbf5c ./Core/Src/can_tranceive.o
+ .debug_str     0x000e4104    0xdbf47 ./Core/Src/can_tranceive.o
  .debug_str     0x000e4104    0xdb9c6 ./Core/Src/checkstatus.o
  .debug_str     0x000e4104    0xd5a0f ./Core/Src/led_control.o
  .debug_str     0x000e4104    0xd606a ./Core/Src/liquidcrystal_i2c.o

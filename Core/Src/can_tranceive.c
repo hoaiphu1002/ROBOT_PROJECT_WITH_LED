@@ -38,12 +38,6 @@ extern volatile uint32_t can_rx_count ;
 
 #define ENABLE_DEBUG_CAN 0  // bật = 1 nếu muốn in gói CAN qua UART
 
-
-
-extern volatile uint8_t bno055_need_reset;
-extern volatile uint8_t BNO055_I2C_Done;
-extern volatile uint8_t BNO055_I2C_Error;
-
 // Các biến toàn cục cần có
 static uint32_t imu_reset_time = 0;
 static uint8_t imu_recover_fail_count = 0;
@@ -156,7 +150,7 @@ void CAN_Loopback_Test(void)
 {
 	  uint8_t tmp[8] = { 0x3F, 0xFF, 0x80, 0x77, 0, 0, 0, 0 };
 	      memcpy(txData, tmp, sizeof(tmp));
-    if (HAL_CAN_AddTxMessage(&hcan1, &TxHeader, txData, &TxMailbox) != HAL_OK) {
+    if (CAN_SendNonBlocking(&hcan1, &TxHeader, txData, &TxMailbox) != HAL_OK) {
         HAL_UART_Transmit(&huart1, (uint8_t*)"TX FAIL\r\n", 9, HAL_MAX_DELAY);
         return;
     } else {
@@ -192,7 +186,7 @@ HAL_StatusTypeDef CAN_SendString(uint16_t stdId, const char *str)
     TxHeader.DLC = len;
     TxHeader.TransmitGlobalTime = DISABLE;
 
-    HAL_StatusTypeDef status = HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox);
+    HAL_StatusTypeDef status = CAN_SendNonBlocking(&hcan1, &TxHeader, TxData, &TxMailbox);
 
     if (status != HAL_OK) {
         char err[] = "CAN FRAME SEND FAIL\r\n";
