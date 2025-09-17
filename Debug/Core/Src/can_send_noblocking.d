@@ -1,5 +1,5 @@
-Core/Src/can_tranceive.o: ../Core/Src/can_tranceive.c \
- ../Core/Inc/can_receive.h \
+Core/Src/can_send_noblocking.o: ../Core/Src/can_send_noblocking.c \
+ ../Core/Inc/can_send_noblocking.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
@@ -35,14 +35,8 @@ Core/Src/can_tranceive.o: ../Core/Src/can_tranceive.c \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_spi.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
- ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- ../Core/Inc/main.h ../Core/Inc/RC522.h ../Core/Inc/MQ135.h \
- ../Core/Inc/main.h ../Core/Inc/liquidcrystal_i2c.h \
- ../Core/Inc/BNO055_STM32.h ../Core/Inc/display.h \
- ../Core/Inc/BNO055_STM32.h ../Core/Inc/can_topic.h ../Core/Inc/rfid.h \
- ../Core/Inc/can_topic.h ../Core/Inc/ultrasonic_sensor.h \
- ../Core/Inc/BN055_IT.h ../Core/Inc/can_send_noblocking.h
-../Core/Inc/can_receive.h:
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h
+../Core/Inc/can_send_noblocking.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h:
@@ -79,17 +73,3 @@ Core/Src/can_tranceive.o: ../Core/Src/can_tranceive.c \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
-../Core/Inc/main.h:
-../Core/Inc/RC522.h:
-../Core/Inc/MQ135.h:
-../Core/Inc/main.h:
-../Core/Inc/liquidcrystal_i2c.h:
-../Core/Inc/BNO055_STM32.h:
-../Core/Inc/display.h:
-../Core/Inc/BNO055_STM32.h:
-../Core/Inc/can_topic.h:
-../Core/Inc/rfid.h:
-../Core/Inc/can_topic.h:
-../Core/Inc/ultrasonic_sensor.h:
-../Core/Inc/BN055_IT.h:
-../Core/Inc/can_send_noblocking.h:

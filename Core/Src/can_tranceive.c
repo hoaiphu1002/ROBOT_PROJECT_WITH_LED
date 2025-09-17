@@ -18,8 +18,8 @@
 #include "rfid.h"
 #include "can_topic.h"
 #include "ultrasonic_sensor.h"
-
-
+#include "BN055_IT.h"
+#include "can_send_noblocking.h"
 //khai báo mở rộng, không định nghĩa lại
 extern UART_HandleTypeDef huart1;
 extern CAN_HandleTypeDef hcan1;
@@ -45,51 +45,72 @@ extern volatile uint8_t bno055_need_reset;
 extern volatile uint8_t BNO055_I2C_Done;
 extern volatile uint8_t BNO055_I2C_Error;
 
+
 void BNO055_CheckAndRecover(void)
 {
+    static BNO055_Sensors_t last_data;       // dữ liệu lần trước
+    static uint32_t last_update_time = 0;    // thời điểm cập nhật cuối
+    static uint8_t first_run = 1;
+
+    // --- 1. Watchdog dữ liệu ---
+    BNO055_Sensors_t current;
+    ReadData(&current, SENSOR_EULER); // hoặc SENSOR_QUATERNION tùy bạn dùng
+
+    if (first_run) {
+        last_data = current;
+        last_update_time = HAL_GetTick();
+        first_run = 0;
+    } else {
+        if (memcmp(&current, &last_data, sizeof(BNO055_Sensors_t)) != 0) {
+            // dữ liệu thay đổi -> update lại
+            last_data = current;
+            last_update_time = HAL_GetTick();
+        } else if (HAL_GetTick() - last_update_time > 200) {
+            // dữ liệu không đổi >200ms → coi như treo
+            printf("⚠️ IMU data frozen, trigger reset\r\n");
+            bno055_need_reset = 1;
+        }
+    }
+
+    // --- 2. Thực hiện reset khi có lỗi ---
     if (bno055_need_reset) {
-        bno055_need_reset = 0;  // clear flag ngay
-
-        if (HAL_GetTick() - imu_reset_time > 2000) {  // 2 giây mới cho reset 1 lần
+        if (HAL_GetTick() - imu_reset_time > 2000) {  // tránh reset liên tục
             imu_reset_time = HAL_GetTick();
-
             printf("⚠️ IMU recover attempt...\r\n");
 
-            // 1. Giải phóng và re-init I2C
-            HAL_I2C_DeInit(&bno_i2c);
-            HAL_Delay(5);
-            HAL_I2C_Init(&bno_i2c);
+            // 1. Reset I2C bus
+            I2C_ManualBusRecovery();
 
-            // 2. Reset và init lại IMU
+            // 2. Reset IMU
             ResetBNO055();
-            BNO055_Init();
 
-            // 3. Check lại SYS_STATUS
+            // 3. Đợi SYS_STATUS = 5 (Fusion Algorithm Running)
             uint8_t sys_status = 0;
-            BNO055_IT_Read(P_BNO055, SYS_STATUS_ADDR, &sys_status, 1);
+            uint32_t start = HAL_GetTick();
+            do {
+                BNO055_IT_Read(P_BNO055, SYS_STATUS_ADDR, &sys_status, 1);
+                HAL_Delay(20);
+            } while (sys_status != 5 && (HAL_GetTick() - start < 3000));
 
             if (sys_status == 5) {
-                // Fusion algorithm OK
-                imu_recover_fail_count = 0;   // clear fail counter
+                imu_recover_fail_count = 0;
+                bno055_need_reset = 0;   // ✅ chỉ clear khi thành công
                 printf("✅ IMU recovered successfully\r\n");
             } else {
                 imu_recover_fail_count++;
                 printf("❌ IMU recover failed (%d)\r\n", imu_recover_fail_count);
 
-                // Nếu thất bại liên tiếp 3 lần → reset toàn MCU
                 if (imu_recover_fail_count >= 3) {
                     printf("🚨 Too many IMU failures → system reset\r\n");
                     NVIC_SystemReset();
                 }
             }
 
-            // 4. Clear cờ lỗi
             BNO055_I2C_Error = 0;
             BNO055_I2C_Done  = 0;
         }
     }
 }
-
 
 
 bool BNO055_IsStable(void)
@@ -177,7 +198,7 @@ HAL_StatusTypeDef CAN_SendTopicData(uint16_t topic_id, uint8_t *data, uint8_t le
     // --- Retry loop ---
     do {
         if (HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) > 0) {
-            status = HAL_CAN_AddTxMessage(&hcan1, &TxHeader, data, &TxMailbox);
+            status = CAN_SendNonBlocking(&hcan1, &TxHeader, data, &TxMailbox);
             if (status == HAL_OK) {
                 return HAL_OK;  // gửi thành công
             }

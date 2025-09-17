@@ -383,5 +383,6 @@ BNO055_EulerRaw_t BNO055_ReadEulerRaw(void);
 BNO055_EulerFloat_t BNO055_ReadEulerFloat(void);
 void BNO055_SendEulerCAN(void);
 void BNO055_PrintEulerDebug(void);
+void I2C_ManualBusRecovery(void);
 
 #endif /* INC_BNO055_STM32_H_ */

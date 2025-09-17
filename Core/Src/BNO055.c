@@ -10,6 +10,8 @@
 #include <string.h>
 #include <stdio.h>
 #include "can_topic.h"
+#include "math.h"
+
 
 // Nếu prototype 2 wrapper đã có trong header thì các dòng extern dưới đây là dư nhưng vẫn an toàn.
 extern HAL_StatusTypeDef BNO055_IT_Read (uint8_t devAddr, uint8_t regAddr, uint8_t *pData, uint16_t len);
@@ -165,26 +167,46 @@ void SelectPage(uint8_t page){  //BNO055 có 2 page thanh ghi: PAGE 0 và PAGE 1
   *
   * @retval None
   */
-void ResetBNO055(void){
-	//Gửi lệnh reset phần mềm (0x20 vào SYS_TRIGGER_ADDR)
-	//Kiểm tra chip ID(phải bằng 0xA0) để đảm bảo reset thành công
+void ResetBNO055(void)
+{
+    uint8_t reset_cmd = 0x20;
+    uint8_t chip_id = 0;
+    uint32_t start;
 
-	uint8_t reset = 0x20;
-	BNO055_IT_Write(P_BNO055, SYS_TRIGGER_ADDR, &reset, 1);
-	HAL_Delay(200);
+    // 1. Gửi lệnh reset phần mềm
+    BNO055_IT_Write(P_BNO055, SYS_TRIGGER_ADDR, &reset_cmd, 1);
+    HAL_Delay(700); // >= 650 ms theo datasheet
 
-	//Checking for is reset process done
-	uint8_t chip_id=0;
+    // 2. Chờ đọc lại CHIP_ID = 0xA0
+    start = HAL_GetTick();
+    do {
+        BNO055_IT_Read(P_BNO055, CHIP_ID_ADDR, &chip_id, 1);
+        HAL_Delay(10);
+    } while (chip_id != BNO055_ID && (HAL_GetTick() - start < 2000));
 
-	//If value of id register is not equal to BNO055 chip id which is 0xA0, wait until equal to each other
-	do {
-		BNO055_IT_Read(P_BNO055, CHIP_ID_ADDR, &chip_id, 1);
-		if(chip_id != BNO055_ID){
-			printf("BNO055-> Undefined chip id\n");
-			HAL_Delay(100);
-		}
-	} while(chip_id != BNO055_ID);
+    if (chip_id != BNO055_ID) {
+        printf("❌ ResetBNO055: Chip ID không hợp lệ\n");
+        return;
+    }
+
+    // 3. Init lại IMU (set lại config, unit, mode…)
+    BNO055_Init();
+
+    // 4. Chờ Fusion Algorithm ready
+    uint8_t sys_status = 0;
+    start = HAL_GetTick();
+    do {
+        BNO055_IT_Read(P_BNO055, SYS_STATUS_ADDR, &sys_status, 1);
+        HAL_Delay(50);
+    } while (sys_status != 5 && (HAL_GetTick() - start < 2000));
+
+    if (sys_status == 5) {
+        printf("✅ ResetBNO055: Fusion algorithm running\n");
+    } else {
+        printf("⚠️ ResetBNO055: SYS_STATUS=%d, sensor chưa sẵn sàng\n", sys_status);
+    }
 }
+
 
 /*!
  *   @brief  Reads various data measured by BNO055
@@ -201,6 +223,62 @@ void ResetBNO055(void){
  *
  *   @retval Structure containing the values ​​of the read data
  */
+void I2C_ManualBusRecovery(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    // 1. Tắt I2C peripheral
+    HAL_I2C_DeInit(&bno_i2c);
+
+    // 2. Cấu hình SCL, SDA thành GPIO output open-drain
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+
+    // SCL = PB6
+    GPIO_InitStruct.Pin = GPIO_PIN_6;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    // SDA = PB7
+    GPIO_InitStruct.Pin = GPIO_PIN_7;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    // 3. Phát 9 xung clock trên SCL để giải phóng SDA
+    for (int i = 0; i < 9; i++) {
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);   // SCL High
+        HAL_Delay(1);
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET); // SCL Low
+        HAL_Delay(1);
+    }
+
+    // 4. Phát STOP condition giả
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET); // SDA Low
+    HAL_Delay(1);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);   // SCL High
+    HAL_Delay(1);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);   // SDA High
+    HAL_Delay(1);
+
+    // 5. Trả lại GPIO cho peripheral I2C
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
+
+    GPIO_InitStruct.Pin = GPIO_PIN_6; // SCL
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_7; // SDA
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    // 6. Bật lại I2C
+    HAL_I2C_Init(&bno_i2c);
+
+    printf("🔄 I2C bus recovered\r\n");
+}
+
+
+extern volatile uint8_t bno055_need_reset;
 void ReadData(BNO055_Sensors_t *sensorData,BNO055_Sensor_Type sensors){ //Đọc dữ liệu cảm biến
 
 	//Dựa vào kiểu dữ liệu được chọn (SENSOR_ACCEL, SENSOR_EULER, v.v.), đọc đúng thanh ghi từ BNO055.
@@ -255,13 +333,41 @@ void ReadData(BNO055_Sensors_t *sensorData,BNO055_Sensor_Type sensors){ //Đọc
 		memset(buffer, 0, sizeof(buffer));
 	}
 	if (sensors & SENSOR_EULER) {
-		BNO055_IT_Read(P_BNO055, BNO_EULER, buffer, 6);
-		sensorData->Euler.X = (float)(((int16_t) ((buffer[1] << 8) | buffer[0]))/16.0);
-		sensorData->Euler.Y = (float)(((int16_t) ((buffer[3] << 8) | buffer[2]))/16.0);
-		sensorData->Euler.Z = (float)(((int16_t) ((buffer[5] << 8) | buffer[4]))/16.0);
-		memset(buffer, 0, sizeof(buffer));
+	    HAL_StatusTypeDef ret = BNO055_IT_Read(P_BNO055, BNO_EULER, buffer, 6);
+
+	    if (ret == HAL_OK) {
+	        float new_yaw   = (float)(((int16_t)((buffer[1] << 8) | buffer[0])) / 16.0f);
+	        float new_pitch = (float)(((int16_t)((buffer[3] << 8) | buffer[2])) / 16.0f);
+	        float new_roll  = (float)(((int16_t)((buffer[5] << 8) | buffer[4])) / 16.0f);
+
+	        // 🔹 Euler watchdog
+	        static float last_yaw = 0;
+	        static uint32_t last_update = 0;
+
+	        if (fabs(new_yaw - last_yaw) < 0.01f) {
+	            if (HAL_GetTick() - last_update > 500) {
+	                printf("⚠️ Euler stuck → reset IMU\r\n");
+	                bno055_need_reset = 1;
+	            }
+	        } else {
+	            last_update = HAL_GetTick();
+	            last_yaw = new_yaw;
+	        }
+
+	        // cập nhật dữ liệu vào struct
+	        sensorData->Euler.X = new_yaw;
+	        sensorData->Euler.Y = new_pitch;
+	        sensorData->Euler.Z = new_roll;
+	    } else {
+	        printf("❌ Euler read error\r\n");
+	        bno055_need_reset = 1;
+	    }
+
+	    memset(buffer, 0, sizeof(buffer));
 	}
+
 }
+
 
 /*!
  *  @brief  Puts the chip in the specified operating mode

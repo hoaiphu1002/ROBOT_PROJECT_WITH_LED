@@ -5,6 +5,7 @@
 "./Core/Src/PN532.o"
 "./Core/Src/RC522.o"
 "./Core/Src/can_receive.o"
+"./Core/Src/can_send_noblocking.o"
 "./Core/Src/can_tranceive.o"
 "./Core/Src/checkstatus.o"
 "./Core/Src/display.o"
